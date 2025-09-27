@@ -1,0 +1,41 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/gcs-proxy:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/gcs-proxy:latest',
+      '.'
+    ]
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gcs-proxy:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gcs-proxy:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'gcs-proxy',
+      '--image', 'gcr.io/$PROJECT_ID/gcs-proxy:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--set-env-vars', 'GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID,GCS_BUCKET_NAME=${_BUCKET_NAME}',
+      '--memory', '512Mi',
+      '--cpu', '1',
+      '--concurrency', '80',
+      '--max-instances', '100',
+      '--min-instances', '0',
+      '--timeout', '300s'
+    ]
+
+# Substitution variables that can be provided when triggering the build
+substitutions:
+  _BUCKET_NAME: 'your-bucket-name'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

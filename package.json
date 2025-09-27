@@ -1,0 +1,36 @@
+{
+  "name": "gcs-proxy",
+  "version": "1.0.0",
+  "description": "GCS proxy server for Cloudflare CDN backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "build": "echo 'No build step needed'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "gcs",
+    "proxy",
+    "cloudflare",
+    "cdn",
+    "google-cloud-storage"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "@google-cloud/storage": "^7.5.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "winston": "^3.10.0",
+    "compression": "^1.7.4",
+    "mime-types": "^2.1.35"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
