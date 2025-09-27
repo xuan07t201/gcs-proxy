@@ -25,7 +25,8 @@
     "helmet": "^7.0.0",
     "winston": "^3.10.0",
     "compression": "^1.7.4",
-    "mime-types": "^2.1.35"
+    "mime-types": "^2.1.35",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
