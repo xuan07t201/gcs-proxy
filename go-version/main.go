@@ -75,27 +75,31 @@ func initializeGCS() error {
 	}
 
 	// Initialize GCS client
-	if keyFile != "" {
-		// Use service account key file
+	// Try Application Default Credentials first (works on Cloud Run, GCE, etc.)
+	storageClient, err = storage.NewClient(ctx)
+	if err != nil && keyFile != "" {
+		// Fallback to service account key file if ADC fails
+		logger.WithField("key_file", keyFile).Info("ADC failed, trying service account key file")
 		storageClient, err = storage.NewClient(ctx, option.WithCredentialsFile(keyFile))
-	} else {
-		// Use Application Default Credentials
-		storageClient, err = storage.NewClient(ctx)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create storage client: %v", err)
 	}
 
+	// Determine actual auth method used
+	authMethod := "application_default_credentials"
+	if keyFile != "" {
+		// Check if we actually used the key file (this is best effort)
+		if _, fileErr := os.Stat(keyFile); fileErr == nil {
+			authMethod = "service_account_key"
+		}
+	}
+
 	logger.WithFields(logrus.Fields{
 		"project_id":  projectID,
 		"bucket_name": bucketName,
-		"auth_method": func() string {
-			if keyFile != "" {
-				return "service_account_key"
-			}
-			return "application_default_credentials"
-		}(),
+		"auth_method": authMethod,
 	}).Info("GCS client initialized successfully")
 
 	return nil
