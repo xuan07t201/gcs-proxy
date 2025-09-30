@@ -1,0 +1,67 @@
+# Cloud Build configuration for Go version
+steps:
+  # Build Go binary with optimizations
+  - name: 'golang:1.21-alpine'
+    env:
+    - 'CGO_ENABLED=0'
+    - 'GOOS=linux'
+    - 'GOARCH=amd64'
+    dir: 'go-version'
+    script: |
+      echo "Building optimized Go binary..."
+      go mod tidy
+      go build -ldflags="-w -s -extldflags '-static'" -a -installsuffix cgo -o gcs-proxy .
+      ls -la gcs-proxy
+
+  # Build minimal Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/gcs-proxy-go:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/gcs-proxy-go:latest',
+      './go-version'
+    ]
+
+  # Push images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gcs-proxy-go:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/gcs-proxy-go:latest']
+
+  # Deploy to Cloud Run with optimal settings
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'gcs-proxy-go',
+      '--image', 'gcr.io/$PROJECT_ID/gcs-proxy-go:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--set-env-vars', 'GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID,GCS_BUCKET_NAME=${_BUCKET_NAME},GIN_MODE=release',
+      
+      # Optimal resource allocation for Go
+      '--memory', '128Mi',           # Go uses minimal memory
+      '--cpu', '0.5',                # Half vCPU sufficient
+      '--concurrency', '1000',       # Go handles high concurrency well
+      '--max-instances', '10',       # Cost control for low traffic
+      '--min-instances', '0',        # Scale to zero when idle
+      '--timeout', '60s',            # Quick timeout for cost efficiency
+      
+      # Performance optimizations
+      '--execution-environment', 'gen2',
+      '--cpu-throttling',
+      '--startup-cpu-boost',
+      
+      # Labels for monitoring
+      '--labels', 'app=gcs-proxy,version=go,environment=production'
+    ]
+
+# Substitution variables
+substitutions:
+  _BUCKET_NAME: 'your-bucket-name'
+
+# Build options
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8  # Fast build with high CPU
